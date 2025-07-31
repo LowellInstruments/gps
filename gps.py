@@ -46,7 +46,9 @@ def gps_set_number_of_satellites_in_view(bb):
             sentence = line.decode()
             ns_view = sentence.split(',')[3]
         except (Exception,) as ex:
+            ns_view = 0
             pm(f'error parsing {sentence} -> {ex}')
+
 
 
 def gps_hat_activate_nmea_output(usb_port):
@@ -182,7 +184,7 @@ def gps_read(usb_port) -> bytes:
             bb += ser.read(ser.in_waiting)
 
             # basic debug
-            print('bb', bb)
+            # print('bb', bb)
 
             is_there_gsv = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGSV') and chr(x[-3]) == '*']
             is_there_rmc = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPRMC') and chr(x[-3]) == '*']
