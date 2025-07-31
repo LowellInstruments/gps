@@ -14,6 +14,7 @@ p_mod = 'GPS'
 g_last_ymd = ''
 using_puck = 0
 using_hat = 0
+ns_view = 0
 
 
 
@@ -28,6 +29,24 @@ def gps_get_type_of_antenna():
         return 'external'
     return 'internal'
 
+
+
+def gps_get_number_of_satellites():
+    return ns_view
+
+
+
+def gps_set_number_of_satellites_in_view(bb):
+    # bb: list of binary $GPGSV sentences
+
+    global ns_view
+    for line in bb:
+        try:
+            # line: b'$GPGSV,3,3,11,27,09,318,20,48,13,249,,20,02,107,*4A'
+            sentence = line.decode()
+            ns_view = sentence.split(',')[3]
+        except (Exception,) as ex:
+            pm(f'error parsing {sentence} -> {ex}')
 
 
 def gps_hat_activate_nmea_output(usb_port):
@@ -163,10 +182,13 @@ def gps_read(usb_port) -> bytes:
             bb += ser.read(ser.in_waiting)
 
             # basic debug
-            # print('bb', bb)
+            print('bb', bb)
 
+            is_there_gsv = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGSV') and chr(x[-3]) == '*']
             is_there_rmc = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPRMC') and chr(x[-3]) == '*']
             is_there_gga = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGGA') and chr(x[-3]) == '*']
+
+            gps_set_number_of_satellites_in_view(is_there_gsv)
             if is_there_rmc or is_there_gga:
                 break
     except (Exception,) as ex:
@@ -250,3 +272,13 @@ def gps_parse_sentence_rmc(bb):
 
 def gps_parse_sentence_gga(bb):
     return gps_sentence_parse_whole(bb, b'$GPGGA')
+
+
+
+# test
+if __name__ == '__main__':
+    gps_usb_ports_find_any()
+    while 1:
+        g = gps_read('/dev/ttyUSB0')
+        print(g)
+        time.sleep(1)
