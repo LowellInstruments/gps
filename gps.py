@@ -47,7 +47,7 @@ def gps_set_number_of_satellites_in_view(bb):
             ns_view = sentence.split(',')[3]
         except (Exception,) as ex:
             ns_view = 0
-            pm(f'error parsing {sentence} -> {ex}')
+            pm(f'error gps_set_number_of_satellites_in_view -> {ex}')
 
 
 
@@ -189,7 +189,6 @@ def gps_read(usb_port) -> bytes:
             is_there_gsv = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGSV') and chr(x[-3]) == '*']
             is_there_rmc = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPRMC') and chr(x[-3]) == '*']
             is_there_gga = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGGA') and chr(x[-3]) == '*']
-
             gps_set_number_of_satellites_in_view(is_there_gsv)
             if is_there_rmc or is_there_gga:
                 break
@@ -223,7 +222,7 @@ def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
     assert type(b_type) is bytes
 
     ll = bb.split(b'\r\n')
-    ll = [i for i in ll if b_type in i]
+    ll = [i for i in ll if b_type in i and chr(i[-3]) == '*']
     ok = False
     lat, lon, dt = '', '', ''
     sentence = ''
