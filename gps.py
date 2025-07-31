@@ -161,6 +161,10 @@ def gps_read(usb_port) -> bytes:
         for _ in range(11):
             time.sleep(.1)
             bb += ser.read(ser.in_waiting)
+
+            # basic debug
+            # print('bb', bb)
+
             is_there_rmc = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPRMC') and chr(x[-3]) == '*']
             is_there_gga = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGGA') and chr(x[-3]) == '*']
             if is_there_rmc or is_there_gga:
@@ -199,6 +203,7 @@ def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
     ok = False
     lat, lon, dt = '', '', ''
     sentence = ''
+    speed = ''
 
     for line in ll:
         try:
@@ -206,10 +211,15 @@ def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
             m = pynmea2.parse(sentence, check=False)
             lat = m.latitude
             lon = m.longitude
+
             # time is slightly different depending on sentence
             dt = gps_sentence_parse_time_field(m, b_type)
+
             if lat and lon and dt:
                 ok = True
+                if b_type == b'$GPRMC':
+                    print('hello')
+                    speed = sentence.split(',')[7]
                 break
         except ChecksumError:
             pm(f'error parse bad checksum on {sentence}')
@@ -222,13 +232,15 @@ def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
     if type(lon) is float:
         lon = '{:.4f}'.format(float(lon))
 
+    print('speed', speed)
     return {
         'ok': ok,
         'type': b_type.decode(),
         'lat': lat,
         'lon': lon,
         'dt': dt,
-        'sentence': sentence
+        'sentence': sentence,
+        'speed': speed
     }
 
 
