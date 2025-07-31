@@ -218,7 +218,6 @@ def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
             if lat and lon and dt:
                 ok = True
                 if b_type == b'$GPRMC':
-                    print('hello')
                     speed = sentence.split(',')[7]
                 break
         except ChecksumError:
@@ -232,7 +231,6 @@ def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
     if type(lon) is float:
         lon = '{:.4f}'.format(float(lon))
 
-    print('speed', speed)
     return {
         'ok': ok,
         'type': b_type.decode(),
