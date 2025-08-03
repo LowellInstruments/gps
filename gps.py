@@ -194,6 +194,7 @@ def gps_read(usb_port) -> bytes:
                 break
     except (Exception,) as ex:
         pm(f'error gps_read -> {ex}')
+        time.sleep(1)
     finally:
         if ser:
             ser.close()
