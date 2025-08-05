@@ -168,7 +168,7 @@ def gps_usb_ports_find_any():
 
 
 
-def gps_read(usb_port) -> bytes:
+def gps_hardware_read(usb_port) -> bytes:
     # usb_port: '/dev/ttyUSB0'
     bb = bytes()
     ser = None
@@ -281,6 +281,6 @@ def gps_parse_sentence_gga(bb):
 if __name__ == '__main__':
     gps_usb_ports_find_any()
     while 1:
-        g = gps_read('/dev/ttyUSB0')
+        g = gps_hardware_read('/dev/ttyUSB0')
         print(g)
         time.sleep(1)
