@@ -231,6 +231,8 @@ def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
 
     for line in ll:
         try:
+            # case of b'.3$GPGGA,135850'
+            line = line[line.index(b'$'):]
             sentence = line.decode()
             m = pynmea2.parse(sentence, check=False)
             lat = m.latitude
