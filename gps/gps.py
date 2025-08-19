@@ -177,7 +177,7 @@ def gps_hardware_read(usb_port) -> bytes:
         if using_puck:
             ser = serial.Serial(usb_port, 4800, timeout=0)
         else:
-            ser = serial.Serial(usb_port, baudrate=115200, timeout=0)
+            ser = serial.Serial(usb_port, baudrate=115200, timeout=0, rtscts=True, dsrdtr=True)
 
         for _ in range(11):
             time.sleep(.1)
@@ -186,15 +186,20 @@ def gps_hardware_read(usb_port) -> bytes:
             # basic debug
             # print('bb', bb)
 
-            is_there_gsv = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGSV') and chr(x[-3]) == '*']
-            is_there_rmc = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPRMC') and chr(x[-3]) == '*']
-            is_there_gga = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGGA') and chr(x[-3]) == '*']
+            is_there_gsv = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGSV') and
+                            x.count(b'$') == 1 and chr(x[-3]) == '*']
+            is_there_rmc = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPRMC') and
+                            x.count(b'$') == 1 and chr(x[-3]) == '*']
+            is_there_gga = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGGA') and
+                            x.count(b'$') == 1 and chr(x[-3]) == '*']
             gps_set_number_of_satellites_in_view(is_there_gsv)
             if is_there_rmc or is_there_gga:
                 break
+
     except (Exception,) as ex:
-        pm(f'error gps_read -> {ex}')
+        pm(f'error gps_hardware_read -> {ex}')
         time.sleep(1)
+
     finally:
         if ser:
             ser.close()
@@ -246,8 +251,10 @@ def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
                 if b_type == b'$GPRMC':
                     speed = sentence.split(',')[7]
                 break
+
         except ChecksumError:
             pm(f'error parse bad checksum on {sentence}')
+
         except (Exception,) as ex:
             pm(f'error parsing {sentence} -> {ex}')
 
