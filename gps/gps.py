@@ -4,16 +4,15 @@ import serial
 from pynmea2 import ChecksumError
 from serial.tools import list_ports
 from datetime import datetime, timezone
+from gps.gps_adafruit import gps_adafruit_detect_usb_port, gps_adafruit_read
+from gps.gps_puck import gps_puck_detect_usb_port, gps_puck_read
+from gps.gps_quectel import gps_hat_detect_list_of_usb_ports, gps_hat_read
 
-
-
-VID_PID_GPS_PUCK = "067B:23A3"
-VID_PID_GPS_PUCK_2 = "067B:2303"
-VID_PID_GPS_HAT = "2C7C:0125"
 p_mod = 'GPS'
 g_last_ymd = ''
 using_puck = 0
 using_hat = 0
+using_adafruit = 0
 ns_view = 0
 
 
@@ -25,6 +24,8 @@ def pm(s):
 
 
 def gps_get_type_of_antenna():
+    if using_adafruit:
+        return 'external'
     if using_puck:
         return 'external'
     return 'internal'
@@ -36,174 +37,67 @@ def gps_get_number_of_satellites():
 
 
 
-def gps_set_number_of_satellites_in_view(bb):
-    # bb: list of binary $GPGSV sentences
+def gps_find_any_usb_port():
 
-    global ns_view
-    for line in bb:
-        try:
-            # line: b'$GPGSV,3,3,11,27,09,318,20,48,13,249,,20,02,107,*4A'
-            sentence = line.decode()
-            ns_view = sentence.split(',')[3]
-        except (Exception,) as ex:
-            ns_view = 0
-            pm(f'error gps_set_number_of_satellites_in_view -> {ex}')
-
-
-
-def gps_hat_activate_nmea_output(usb_port):
-
-    # usb_port: '/dev/ttyUSB2'
-    bb = bytes()
-    ser = None
-    rv = False
-
-    try:
-        ser = serial.Serial(usb_port, baudrate=115200, timeout=0)
-        for i in range(3):
-            # probably has echo activated so will receive back this
-            ser.write(b'AT+QGPS=1\r')
-            time.sleep(.1)
-            bb = ser.read(ser.in_waiting)
-
-            # basic GPS debug
-            # print('bb', bb)
-
-            if b'OK' in bb:
-                rv = True
-            if b'AT+QGPS=1' in bb:
-                # this is the echo
-                rv = True
-            if b'CME ERROR: 504' in bb:
-                # means was already on
-                rv = True
-            if rv:
-                break
-
-    except (Exception,) as ex:
-        pm(f'error gps_activate_hat_output -> {ex}')
-
-    finally:
-        if ser:
-            ser.close()
-        return rv, bb
-
-
-
-def gps_hat_get_firmware_version(port_ctrl):
-
-    # usb_port: '/dev/ttyUSB2'
-    ser = None
-    ans_v = bytes()
-    ans_m = bytes()
-    pm(f'getting hat\'s firmware version from port {port_ctrl}')
-
-    try:
-        ser = serial.Serial(port_ctrl, baudrate=115200, timeout=0)
-        ser.write(b"AT+CVERSION\r")
-        time.sleep(.1)
-        ans_v = ser.read(ser.in_waiting)
-        ser.write(b"AT+QGMR\r")
-        time.sleep(.1)
-        ans_m = ser.read(ser.in_waiting)
-        ans_v = ans_v.replace(b"OK", b"")
-        ans_v = ans_v.replace(b"\r\n", b"")
-        ans_m = ans_m.replace(b"OK", b"")
-        ans_m = ans_m.replace(b"\r\n", b"")
-
-    except (Exception,) as ex:
-        pm(f'error gps_know_hat_firmware_version -> {ex}')
-
-    finally:
-        if ser:
-            ser.close()
-        return ans_v, ans_m
-
-
-
-
-def gps_usb_find_one_port_for_puck():
-    for port, _, vp in sorted(list(list_ports.comports())):
-        if (VID_PID_GPS_PUCK in vp) or (VID_PID_GPS_PUCK_2 in vp):
-            # port: /dev/ttyUSB0
-            pm(f'found puck USB port on {port}')
-            return port
-    return None
-
-
-
-def gps_usb_find_list_of_ports_for_hat():
-    ls = []
-    for port, _, vp in sorted(list(list_ports.comports())):
-        if not VID_PID_GPS_HAT in vp:
-            continue
-        ls.append(port)
-        # ls: ['/dev/ttyUSB0' ... '/dev/ttyUSB3']
-    if ls:
-        pm(f'found hat list of USB ports on\n\t{ls}')
-    return ls
-
-
-
-def gps_usb_ports_find_any():
+    # we prefer adafruit, then puck, then hat
     global using_puck
     global using_hat
+    global using_adafruit
     using_hat = 0
     using_puck = 0
+    using_adafruit = 0
 
-    # preference for GPS puck
-    p = gps_usb_find_one_port_for_puck()
+    p = gps_adafruit_detect_usb_port()
+    if p:
+        using_adafruit = 1
+        return p, None, 'adafruit'
+
+
+    p = gps_puck_detect_usb_port()
     if p:
         using_puck = 1
-        return p, None
+        return p, None, 'puck'
 
-    # when using GPS shield
-    ls_p = gps_usb_find_list_of_ports_for_hat()
+
+    ls_p = gps_hat_detect_list_of_usb_ports()
     if not ls_p:
         return None, None
     using_hat = 1
     port_nmea = ls_p[1]
     port_ctrl = ls_p[-2]
-    return port_nmea, port_ctrl
+    return port_nmea, port_ctrl, 'hat'
 
 
 
 def gps_hardware_read(usb_port) -> bytes:
+
     # usb_port: '/dev/ttyUSB0'
-    bb = bytes()
-    ser = None
-
+    d = dict()
     try:
-        if using_puck:
-            ser = serial.Serial(usb_port, 4800, timeout=0)
+        if using_adafruit:
+            gps_adafruit_read(usb_port, d, show=False)
+        elif using_puck:
+            gps_puck_read(usb_port, d)
         else:
-            ser = serial.Serial(usb_port, baudrate=115200, timeout=0, rtscts=True, dsrdtr=True)
+            gps_hat_read(usb_port, d)
 
-        for _ in range(11):
-            time.sleep(.1)
-            bb += ser.read(ser.in_waiting)
+        # is_there_rmc = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPRMC') and
+        #                 x.count(b'$') == 1 and chr(x[-3]) == '*']
+        # is_there_gga = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGGA') and
+        #                 x.count(b'$') == 1 and chr(x[-3]) == '*']
 
-            # basic debug
-            # print('bb', bb)
 
-            is_there_gsv = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGSV') and
-                            x.count(b'$') == 1 and chr(x[-3]) == '*']
-            is_there_rmc = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPRMC') and
-                            x.count(b'$') == 1 and chr(x[-3]) == '*']
-            is_there_gga = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGGA') and
-                            x.count(b'$') == 1 and chr(x[-3]) == '*']
-            gps_set_number_of_satellites_in_view(is_there_gsv)
-            if is_there_rmc or is_there_gga:
-                break
+        if 'ns' in d.keys():
+            global ns_view
+            ns_view = d['ns']
+            # todo: we can externally query ns_view
 
     except (Exception,) as ex:
         pm(f'error gps_hardware_read -> {ex}')
         time.sleep(1)
 
     finally:
-        if ser:
-            ser.close()
-        return bb
+        return d['bb']
 
 
 
@@ -223,12 +117,12 @@ def gps_sentence_parse_time_field(m, b_type: bytes):
 
 
 def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
-    # bb: list of binary GPS sentences
+    # bb: GPS byte string
     # b_type: b'$GPRMC' or b'$GPGGA'
     assert type(b_type) is bytes
 
     ll = bb.split(b'\r\n')
-    ll = [i for i in ll if b_type in i and chr(i[-3]) == '*']
+    ll = [i for i in ll if b_type in i and chr(i[-3]) == '*' and chr(i[0]) == '$']
     ok = False
     lat, lon, dt = '', '', ''
     sentence = ''
@@ -264,7 +158,7 @@ def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
     if type(lon) is float:
         lon = '{:.4f}'.format(float(lon))
 
-    return {
+    d = {
         'ok': ok,
         'type': b_type.decode(),
         'lat': lat,
@@ -274,22 +168,34 @@ def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
         'speed': speed
     }
 
-
-
-def gps_parse_sentence_rmc(bb):
-    return gps_sentence_parse_whole(bb, b'$GPRMC')
+    return d
 
 
 
-def gps_parse_sentence_gga(bb):
-    return gps_sentence_parse_whole(bb, b'$GPGGA')
+def gps_sentence_has_rmc_info(bb):
+    # bb: b'$GNRMC,185332.400,A,4136.5965,N,07036.5597,W,0.45,187.23,260825,,,D*6B\r\n'
+    d_gp = gps_sentence_parse_whole(bb, b'$GPRMC')
+    d_gn = gps_sentence_parse_whole(bb, b'$GNRMC')
+    if d_gp and d_gp['ok']:
+        return d_gp
+    if d_gn and d_gn['ok']:
+        return d_gn
+
+
+
+def gps_sentence_has_gga_info(bb):
+    d_ga = gps_sentence_parse_whole(bb, b'$GPGGA')
+    if d_ga and d_ga['ok']:
+        return d_ga
+
+
 
 
 
 # test
 if __name__ == '__main__':
-    gps_usb_ports_find_any()
+    _port_nmea, _, _port_type = gps_find_any_usb_port()
+    print(_port_type)
     while 1:
-        g = gps_hardware_read('/dev/ttyUSB0')
+        g = gps_hardware_read(_port_nmea)
         print(g)
-        time.sleep(1)
