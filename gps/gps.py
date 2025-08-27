@@ -61,7 +61,8 @@ def gps_find_any_usb_port():
 
     ls_p = gps_hat_detect_list_of_usb_ports()
     if not ls_p:
-        return None, None
+        return None, None, None
+
     using_hat = 1
     port_nmea = ls_p[1]
     port_ctrl = ls_p[-2]

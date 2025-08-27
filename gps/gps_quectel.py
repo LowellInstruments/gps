@@ -11,9 +11,6 @@ from gps.gps_adafruit import gps_adafruit_detect_usb_port
 VID_PID_GPS_HAT = "2C7C:0125"
 p_mod = 'GPS'
 g_last_ymd = ''
-using_puck = 0
-using_hat = 0
-using_adafruit = 0
 ns_view = 0
 
 
