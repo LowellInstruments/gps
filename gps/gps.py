@@ -1,19 +1,19 @@
-import time
 import pynmea2
-import serial
 from pynmea2 import ChecksumError
-from serial.tools import list_ports
 from datetime import datetime, timezone
-from gps.gps_adafruit import gps_adafruit_detect_usb_port, gps_adafruit_read
-from gps.gps_puck import gps_puck_detect_usb_port, gps_puck_read
-from gps.gps_quectel import gps_hat_detect_list_of_usb_ports, gps_hat_read
+from gps.gps_adafruit import gps_adafruit_detect_usb_port
+from gps.gps_puck import gps_puck_detect_usb_port
+from gps.gps_quectel import gps_hat_detect_list_of_usb_ports
+import time
+import serial
+
+
 
 p_mod = 'GPS'
 g_last_ymd = ''
 using_puck = 0
 using_hat = 0
 using_adafruit = 0
-ns_view = 0
 
 
 
@@ -28,12 +28,7 @@ def gps_get_type_of_antenna():
         return 'external'
     if using_puck:
         return 'external'
-    return 'internal'
-
-
-
-def gps_get_number_of_satellites():
-    return ns_view
+    return 'shield'
 
 
 
@@ -46,6 +41,7 @@ def gps_find_any_usb_port():
     using_hat = 0
     using_puck = 0
     using_adafruit = 0
+
 
     p = gps_adafruit_detect_usb_port()
     if p:
@@ -70,41 +66,9 @@ def gps_find_any_usb_port():
 
 
 
-def gps_hardware_read(usb_port) -> bytes:
-
-    # usb_port: '/dev/ttyUSB0'
-    d = dict()
-    try:
-        if using_adafruit:
-            gps_adafruit_read(usb_port, d, show=False)
-        elif using_puck:
-            gps_puck_read(usb_port, d)
-        else:
-            gps_hat_read(usb_port, d)
-
-        # is_there_rmc = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPRMC') and
-        #                 x.count(b'$') == 1 and chr(x[-3]) == '*']
-        # is_there_gga = [x for x in bb.split(b'\r\n') if x.startswith(b'$GPGGA') and
-        #                 x.count(b'$') == 1 and chr(x[-3]) == '*']
-
-
-        if 'ns' in d.keys():
-            global ns_view
-            ns_view = d['ns']
-            # todo: we can externally query ns_view
-
-    except (Exception,) as ex:
-        pm(f'error gps_hardware_read -> {ex}')
-        time.sleep(1)
-
-    finally:
-        return d['bb']
-
-
-
-def gps_sentence_parse_time_field(m, b_type: bytes):
+def _gps_parse_time(m, b_type: bytes):
     global g_last_ymd
-    if b_type == b'$GPRMC':
+    if b_type in (b'$GPRMC', b'$GNRMC'):
         g_last_ymd = m.datetime.strftime("%Y-%m-%d")
         return m.datetime.strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -117,9 +81,76 @@ def gps_sentence_parse_time_field(m, b_type: bytes):
 
 
 
-def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
+def _gps_parse_satellites_in_view(ls_bb):
+
+    ns = 0
+    for line in ls_bb:
+        try:
+            # ls_bb: list of binary $GPGSV sentences
+            # line: b'$GPGSV,3,3,11,27,09,318,20,48,13,249,,20,02,107,*4A'
+            sentence = line.decode()
+            ns = sentence.split(',')[3]
+        except (Exception,) as ex:
+            print(f'error gps_parse_number_of_satellites_in_view -> {ex}')
+
+    # todo: set in redis
+    return ns
+
+
+
+
+def _gps_contain_sentence_type(bb: bytes, s_type):
+    # s_type: b'$GPGSV'
+    assert type(s_type) is bytes
+    return [x for x in bb.split(b'\r\n') if x.startswith(s_type) and
+            x.count(b'$') == 1 and chr(x[-3]) == '*']
+
+
+
+def gps_hardware_read(up, baud_rate, d: dict, debug=True) -> bytes:
+
+    # up: '/dev/ttyUSB0'
+    ser = None
+    bb = bytes()
+
+    try:
+        ser = serial.Serial(up, baud_rate, timeout=0)
+
+        for i in range(2):
+            time.sleep(.5)
+            bb = ser.read(ser.in_waiting)
+            bb_gsv = _gps_contain_sentence_type(bb, b'$GPGSV')
+            bb_gga = _gps_contain_sentence_type(bb, b'$GPGGA')
+            bb_rmc = _gps_contain_sentence_type(bb, b'$GPRMC')
+            bb_rmc += _gps_contain_sentence_type(bb, b'$GNRMC')
+
+            if debug:
+                for _ in bb.split(b'\r\n'):
+                    print(_)
+
+            if bb_gsv:
+                d['ns'] = _gps_parse_satellites_in_view(bb_gsv)
+
+            if bb_rmc or bb_gsv or bb_gga:
+                break
+
+    except (Exception,) as ex:
+        print(f'GPS: error gps_read -> {ex}')
+        time.sleep(1)
+
+    finally:
+        # bb: bytes
+        d['bb'] = bb
+        if ser:
+            ser.close()
+        return bb
+
+
+
+
+def _gps_parse_sentence_type(bb: bytes, b_type: bytes) -> dict:
     # bb: GPS byte string
-    # b_type: b'$GPRMC' or b'$GPGGA'
+    # b_type: b'$GPRMC', b'$GPGGA'
     assert type(b_type) is bytes
 
     ll = bb.split(b'\r\n')
@@ -138,12 +169,14 @@ def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
             lat = m.latitude
             lon = m.longitude
 
-            # time is slightly different depending on sentence
-            dt = gps_sentence_parse_time_field(m, b_type)
+
+            # time slightly different depending on sentence
+            dt = _gps_parse_time(m, b_type)
+
 
             if lat and lon and dt:
                 ok = True
-                if b_type == b'$GPRMC':
+                if b_type in (b'$GPRMC', b'$GNRMC'):
                     speed = sentence.split(',')[7]
                 break
 
@@ -173,30 +206,21 @@ def gps_sentence_parse_whole(bb: bytes, b_type: bytes) -> dict:
 
 
 
-def gps_sentence_has_rmc_info(bb):
+
+def gps_parse_sentence_type_rmc(bb):
     # bb: b'$GNRMC,185332.400,A,4136.5965,N,07036.5597,W,0.45,187.23,260825,,,D*6B\r\n'
-    d_gp = gps_sentence_parse_whole(bb, b'$GPRMC')
-    d_gn = gps_sentence_parse_whole(bb, b'$GNRMC')
+    d_gp = _gps_parse_sentence_type(bb, b'$GPRMC')
+    d_gn = _gps_parse_sentence_type(bb, b'$GNRMC')
     if d_gp and d_gp['ok']:
         return d_gp
     if d_gn and d_gn['ok']:
         return d_gn
+    return None
 
 
 
-def gps_sentence_has_gga_info(bb):
-    d_ga = gps_sentence_parse_whole(bb, b'$GPGGA')
+def gps_parse_sentence_type_gga(bb):
+    d_ga = _gps_parse_sentence_type(bb, b'$GPGGA')
     if d_ga and d_ga['ok']:
         return d_ga
-
-
-
-
-
-# test
-if __name__ == '__main__':
-    _port_nmea, _, _port_type = gps_find_any_usb_port()
-    print(_port_type)
-    while 1:
-        g = gps_hardware_read(_port_nmea)
-        print(g)
+    return None
