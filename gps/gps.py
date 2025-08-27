@@ -11,9 +11,6 @@ import serial
 
 p_mod = 'GPS'
 g_last_ymd = ''
-using_puck = 0
-using_hat = 0
-using_adafruit = 0
 
 
 
@@ -23,35 +20,16 @@ def pm(s):
 
 
 
-def gps_get_type_of_antenna():
-    if using_adafruit:
-        return 'external'
-    if using_puck:
-        return 'external'
-    return 'shield'
-
-
-
 def gps_find_any_usb_port():
 
     # we prefer adafruit, then puck, then hat
-    global using_puck
-    global using_hat
-    global using_adafruit
-    using_hat = 0
-    using_puck = 0
-    using_adafruit = 0
-
-
     p = gps_adafruit_detect_usb_port()
     if p:
-        using_adafruit = 1
         return p, None, 'adafruit'
 
 
     p = gps_puck_detect_usb_port()
     if p:
-        using_puck = 1
         return p, None, 'puck'
 
 
@@ -59,7 +37,6 @@ def gps_find_any_usb_port():
     if not ls_p:
         return None, None, None
 
-    using_hat = 1
     port_nmea = ls_p[1]
     port_ctrl = ls_p[-2]
     return port_nmea, port_ctrl, 'hat'
@@ -93,7 +70,6 @@ def _gps_parse_satellites_in_view(ls_bb):
         except (Exception,) as ex:
             print(f'error gps_parse_number_of_satellites_in_view -> {ex}')
 
-    # todo: set in redis
     return ns
 
 
@@ -107,7 +83,7 @@ def _gps_contain_sentence_type(bb: bytes, s_type):
 
 
 
-def gps_hardware_read(up, baud_rate, d: dict, debug=True) -> bytes:
+def gps_hardware_read(up, baud_rate, d: dict, debug=True):
 
     # up: '/dev/ttyUSB0'
     ser = None
@@ -143,7 +119,6 @@ def gps_hardware_read(up, baud_rate, d: dict, debug=True) -> bytes:
         d['bb'] = bb
         if ser:
             ser.close()
-        return bb
 
 
 
