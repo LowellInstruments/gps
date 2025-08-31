@@ -22,7 +22,7 @@ def pm(s):
 
 def gps_find_any_usb_port():
 
-    # we prefer adafruit, then puck, then hat
+    # prefer 1) adafruit or 2) puck or 3) hat
     p = gps_adafruit_detect_usb_port()
     if p:
         return p, None, 'adafruit'
@@ -44,6 +44,8 @@ def gps_find_any_usb_port():
 
 
 def _gps_parse_time(m, b_type: bytes):
+
+    # m: pynmea2 message type
     global g_last_ymd
     if b_type in (b'$GPRMC', b'$GNRMC'):
         g_last_ymd = m.datetime.strftime("%Y-%m-%d")
@@ -140,6 +142,10 @@ def _gps_parse_sentence_type(bb: bytes, b_type: bytes) -> dict:
             # case of b'.3$GPGGA,135850'
             line = line[line.index(b'$'):]
             sentence = line.decode()
+
+            # --------------------------
+            # parse with pynmea2 module
+            # --------------------------
             m = pynmea2.parse(sentence, check=False)
             lat = m.latitude
             lon = m.longitude
