@@ -1,9 +1,9 @@
 import pynmea2
 from pynmea2 import ChecksumError
 from datetime import datetime, timezone
-from gps.gps_adafruit import gps_adafruit_detect_usb_port
-from gps.gps_puck import gps_puck_detect_usb_port
-from gps.gps_quectel import gps_hat_detect_list_of_usb_ports
+from .gps_adafruit import gps_adafruit_detect_usb_port
+from .gps_puck import gps_puck_detect_usb_port
+from .gps_quectel import gps_hat_detect_list_of_usb_ports
 import time
 import serial
 
