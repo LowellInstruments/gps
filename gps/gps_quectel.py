@@ -85,7 +85,5 @@ def gps_hat_detect_list_of_usb_ports():
             continue
         ls.append(port)
         # ls: ['/dev/ttyUSB0' ... '/dev/ttyUSB3']
-    if ls:
-        print(f'GPS: found hat list of USB ports on\n\t{ls}')
     return ls
 
