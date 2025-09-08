@@ -52,7 +52,6 @@ def gps_hat_get_firmware_version(port_ctrl):
     ser = None
     ans_v = bytes()
     ans_m = bytes()
-    print(f'GPS: get hat\'s firmware version from {port_ctrl}')
 
     try:
         ser = serial.Serial(port_ctrl, baudrate=115200, timeout=0)
