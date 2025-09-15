@@ -115,6 +115,7 @@ def gps_hardware_read(up, baud_rate, d: dict, debug=True):
     except (Exception,) as ex:
         print(f'GPS: error gps_read -> {ex}')
         time.sleep(1)
+        d['error_gps'] = 1
 
     finally:
         # bb: bytes
