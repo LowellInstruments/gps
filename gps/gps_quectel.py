@@ -8,14 +8,20 @@ VID_PID_GPS_HAT = "2C7C:0125"
 
 
 
-def gps_hat_init(usb_port):
+def _gps_hat_flush(ser):
+    if ser:
+        ser.read(ser.in_waiting)
 
+
+def gps_hat_init(usb_port):
     # usb_port: '/dev/ttyUSB2'
     ser = None
     rv = 0
 
     try:
+        # todo: test this dummy read
         ser = serial.Serial(usb_port, baudrate=115200, timeout=0)
+        _gps_hat_flush(ser)
         for i in range(3):
             # probably echo activated so will receive back this
             ser.write(b'AT+QGPS=1\r')
@@ -47,14 +53,15 @@ def gps_hat_init(usb_port):
 
 
 def gps_hat_get_firmware_version(port_ctrl):
-
     # usb_port: '/dev/ttyUSB2'
     ser = None
     ans_v = bytes()
     ans_m = bytes()
 
     try:
+        # todo: test this dummy read
         ser = serial.Serial(port_ctrl, baudrate=115200, timeout=0)
+        _gps_hat_flush(ser)
         ser.write(b"AT+CVERSION\r")
         time.sleep(.1)
         ans_v = ser.read(ser.in_waiting)
