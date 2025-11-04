@@ -9,5 +9,5 @@ version = "0.1.4"
 description = "GPS library for Lowell Instruments"
 dependencies = [
     "pynmea2",
-    "pyserial"
+    "pyserial",
 ]
