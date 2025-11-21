@@ -19,7 +19,6 @@ def gps_hat_init(usb_port):
     rv = 0
 
     try:
-        # todo: test this dummy read
         ser = serial.Serial(usb_port, baudrate=115200, timeout=0)
         _gps_hat_flush(ser)
         for i in range(3):
@@ -33,11 +32,14 @@ def gps_hat_init(usb_port):
 
             if b'OK' in bb:
                 rv = 1
+                print('gps_hat_init -> OK')
             if b'AT+QGPS=1' in bb:
                 # this is the echo
                 rv = 1
+                print('gps_hat_init -> AT+QGPS=1')
             if b'CME ERROR: 504' in bb:
                 # means was already on
+                print('gps_hat_init -> CME_ALREADY_ON')
                 rv = 1
             if rv:
                 break
