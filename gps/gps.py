@@ -133,7 +133,7 @@ def _gps_parse_sentence_type(bb: bytes, b_type: bytes) -> dict:
 
     ll = bb.split(b'\r\n')
     ll = [i for i in ll if b_type in i and chr(i[-3]) == '*'
-        and i.decode().count('$') == 1
+        and i.count(b'$') == 1
         and chr(i[0]) == '$'
     ]
     ok = False
