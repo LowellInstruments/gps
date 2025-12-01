@@ -132,7 +132,10 @@ def _gps_parse_sentence_type(bb: bytes, b_type: bytes) -> dict:
     assert type(b_type) is bytes
 
     ll = bb.split(b'\r\n')
-    ll = [i for i in ll if b_type in i and chr(i[-3]) == '*' and chr(i[0]) == '$']
+    ll = [i for i in ll if b_type in i and chr(i[-3]) == '*'
+        and i.decode().count('$') == 1
+        and chr(i[0]) == '$'
+    ]
     ok = False
     lat, lon, dt = '', '', ''
     sentence = ''
@@ -143,6 +146,7 @@ def _gps_parse_sentence_type(bb: bytes, b_type: bytes) -> dict:
             # case of b'.3$GPGGA,135850'
             line = line[line.index(b'$'):]
             sentence = line.decode()
+
 
             # --------------------------
             # parse with pynmea2 module

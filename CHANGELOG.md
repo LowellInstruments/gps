@@ -9,3 +9,8 @@
     Added error flag on gps_read
 
 
+0.1.5   12/01/25
+
+    only accept sentences with one $ in _gps_parse_sentence_type()
+
+
