@@ -39,6 +39,8 @@ def gps_find_any_usb_port():
 
     port_nmea = ls_p[1]
     port_ctrl = ls_p[-2]
+    print(f'GPS: hat using USB ports {ls_p}')
+    print(f'\tnmea {port_nmea} ctrl {port_ctrl}')
     return port_nmea, port_ctrl, 'hat'
 
 
