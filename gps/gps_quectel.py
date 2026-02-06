@@ -95,3 +95,18 @@ def gps_hat_detect_list_of_usb_ports():
         # ls: ['/dev/ttyUSB0' ... '/dev/ttyUSB3']
     return ls
 
+
+
+
+def gps_power_cycle_ddc(p_ctl):
+    t = 30
+    ser_ctl = serial.Serial(p_ctl, 115200, timeout=1)
+    try:
+        print(f"=== warning: power-cycling hat, wait ~{t} seconds ===")
+        ser_ctl.write(b'AT+QPOWD=0\r')
+        if ser_ctl and ser_ctl.is_open:
+            ser_ctl.close()
+        time.sleep(30)
+        print("=== warning: power-cycling done, hat should be ON by now ===")
+    except (Exception,) as ex:
+        print('ex gps_power_cycle_2 ->', ex)
