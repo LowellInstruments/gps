@@ -100,13 +100,40 @@ def gps_hat_detect_list_of_usb_ports():
 
 def gps_power_cycle_ddc(p_ctl):
     t = 30
-    ser_ctl = serial.Serial(p_ctl, 115200, timeout=1)
+
+    ser_ctl = None
     try:
+        ser_ctl = serial.Serial(p_ctl, 115200, timeout=1)
         print(f"=== warning: power-cycling hat, wait ~{t} seconds ===")
         ser_ctl.write(b'AT+QPOWD=0\r')
-        if ser_ctl and ser_ctl.is_open:
-            ser_ctl.close()
         time.sleep(30)
         print("=== warning: power-cycling done, hat should be ON by now ===")
     except (Exception,) as ex:
-        print('ex gps_power_cycle_2 ->', ex)
+        print('ex gps_power_cycle_ddc_1 ->', ex)
+    finally:
+        if ser_ctl and ser_ctl.is_open:
+            ser_ctl.close()
+
+    try:
+        print('trying to reactivate GPS')
+        ser_ctl = serial.Serial(p_ctl, 115200, timeout=1)
+        print('now')
+        ser_ctl.write(b'AT+QGPSEND\r')
+        time.sleep(.1)
+        rv = ser_ctl.read_all()
+        print(rv)
+        ser_ctl.write(b'AT+QGPSDEL=1\r')
+        time.sleep(.1)
+        rv = ser_ctl.read_all()
+        print(rv)
+        ser_ctl.write(b'AT+QGPS=1\r')
+        time.sleep(.1)
+        rv = ser_ctl.read_all()
+        print(rv)
+        ser_ctl.reset_input_buffer()
+        time.sleep(1)
+    except (Exception, ) as ex:
+        print(f'error: gps_power_cycle_ddc {ex}')
+    finally:
+        if ser_ctl and ser_ctl.is_open:
+            ser_ctl.close()
