@@ -105,6 +105,7 @@ def gps_power_cycle_ddc(p_ctl):
     time.sleep(3)
     print('***********')
     time.sleep(3)
+    return
 
 
     ser_ctl = None
