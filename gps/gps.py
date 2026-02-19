@@ -104,6 +104,9 @@ def gps_hardware_read(up, baud_rate, d: dict, debug=True):
             bb_rmc = _gps_contain_sentence_type(bb, b'$GPRMC')
             bb_rmc += _gps_contain_sentence_type(bb, b'$GNRMC')
 
+            # useful for power-cycling sixfab hub upon their bug
+            d['err_rmc_comma'] = bb and b'$GPRMC,,V,,,,' in bb
+
             if debug:
                 for _ in bb.split(b'\r\n'):
                     print(_)
