@@ -142,6 +142,7 @@ def _gps_parse_sentence_type(bb: bytes, b_type: bytes) -> dict:
     lat, lon, dt = '', '', ''
     sentence = ''
     speed = ''
+    err_rmc_comma = 0
 
     for line in ll:
         try:
@@ -173,6 +174,9 @@ def _gps_parse_sentence_type(bb: bytes, b_type: bytes) -> dict:
 
         except (Exception,) as ex:
             pm(f'error parsing {sentence} -> {ex}')
+            # detect need of GPS power_cycle
+            err_rmc_comma = sentence and sentence.startswith('$GPRMC,,V,,,,')
+
 
     if type(lat) is float:
         lat = '{:.4f}'.format(float(lat))
@@ -187,7 +191,8 @@ def _gps_parse_sentence_type(bb: bytes, b_type: bytes) -> dict:
         'lon': lon,
         'dt': dt,
         'sentence': sentence,
-        'speed': speed
+        'speed': speed,
+        'err_rmc_comma': err_rmc_comma
     }
 
     return d
