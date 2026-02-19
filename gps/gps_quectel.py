@@ -101,6 +101,12 @@ def gps_hat_detect_list_of_usb_ports():
 def gps_power_cycle_ddc(p_ctl):
     t = 30
 
+    print('is this shit working')
+    time.sleep(3)
+    print('***********')
+    time.sleep(3)
+
+
     ser_ctl = None
     try:
         ser_ctl = serial.Serial(p_ctl, 115200, timeout=1)
