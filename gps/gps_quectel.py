@@ -98,7 +98,7 @@ def gps_hat_detect_list_of_usb_ports():
 
 
 
-def gps_power_cycle_ddc(p_ctl):
+def gps_hat_power_cycle_ddc(p_ctl):
     t = 30
 
     ser_ctl = None
