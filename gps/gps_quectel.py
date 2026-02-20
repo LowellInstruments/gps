@@ -110,7 +110,7 @@ def gps_power_cycle_ddc(p_ctl):
         print("=== warning: power-cycling done, hat should be ON by now ===")
 
     except (Exception,) as ex:
-        print('ex gps_power_cycle_ddc_1 ->', ex)
+        print(f'ex gps_power_cycle_ddc_1 -> {ex}', flush=True)
     finally:
         if ser_ctl and ser_ctl.is_open:
             ser_ctl.close()
@@ -134,7 +134,7 @@ def gps_power_cycle_ddc(p_ctl):
         ser_ctl.reset_input_buffer()
         time.sleep(1)
     except (Exception, ) as ex:
-        print(f'error: gps_power_cycle_ddc {ex}')
+        print(f'error: gps_power_cycle_ddc_2 -> {ex}', flush=True)
     finally:
         if ser_ctl and ser_ctl.is_open:
             ser_ctl.close()
