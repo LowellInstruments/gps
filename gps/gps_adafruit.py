@@ -1,3 +1,4 @@
+import platform
 import serial
 from serial.tools import list_ports
 
@@ -8,11 +9,15 @@ VID_PID_GPS_ADAFRUIT = "10C4:EA60"
 
 
 def gps_adafruit_detect_usb_port():
-    for p, _, vp in sorted(list(list_ports.comports())):
-        if VID_PID_GPS_ADAFRUIT in vp:
-            print(f'GPS: found adafruit USB port on {p}')
-            return p
-    return None
+    if platform.system() == 'Linux':
+        for p, _, vp in sorted(list(list_ports.comports())):
+            if VID_PID_GPS_ADAFRUIT in vp:
+                print(f'GPS: found adafruit USB port on {p}')
+                return p
+        return None
+
+    # Darwin
+    return '/dev/tty.usbserial-10'
 
 
 
