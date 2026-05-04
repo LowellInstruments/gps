@@ -55,25 +55,30 @@ def gps_hat_init(usb_port):
 
 
 def gps_hat_get_firmware_version(port_ctrl):
+
     # usb_port: '/dev/ttyUSB2'
     ser = None
     ans_v = bytes()
     ans_m = bytes()
 
     try:
-        # todo: test this dummy read
         ser = serial.Serial(port_ctrl, baudrate=115200, timeout=0)
         _gps_hat_flush(ser)
-        ser.write(b"AT+CVERSION\r")
-        time.sleep(.1)
-        ans_v = ser.read(ser.in_waiting)
-        ser.write(b"AT+QGMR\r")
-        time.sleep(.1)
-        ans_m = ser.read(ser.in_waiting)
-        ans_v = ans_v.replace(b"OK", b"")
-        ans_v = ans_v.replace(b"\r\n", b"")
-        ans_m = ans_m.replace(b"OK", b"")
-        ans_m = ans_m.replace(b"\r\n", b"")
+        for i in range(3):
+            # probably echo activated so will receive back this
+            ser.write(b"AT+CVERSION\r")
+            time.sleep(.1)
+            ans_v = ser.read(ser.in_waiting)
+            ser.write(b"AT+QGMR\r")
+            time.sleep(.1)
+            ans_m = ser.read(ser.in_waiting)
+            ans_v = ans_v.replace(b"OK", b"")
+            ans_v = ans_v.replace(b"\r\n", b"")
+            ans_m = ans_m.replace(b"OK", b"")
+            ans_m = ans_m.replace(b"\r\n", b"")
+
+            if b'VERSION:' in ans_v:
+                break
 
     except (Exception,) as ex:
         print(f'GPS: error gps_hat_get_firmware_version -> {ex}')
@@ -107,11 +112,11 @@ def gps_hat_power_cycle_ddc(p_ctl, use_print=True):
     try:
         ser_ctl = serial.Serial(p_ctl, 115200, timeout=1)
         if use_print:
-            print(f"=== warning: power-cycling hat, wait ~{t} seconds ===")
+            print(f"=== warning, power-cycling hat, wait ~{t} seconds ===")
         ser_ctl.write(b'AT+QPOWD=0\r')
         time.sleep(30)
         if use_print:
-            print("=== warning: power-cycling done, hat should be ON by now ===")
+            print("=== warning, power-cycling done, hat should be ON by now ===")
 
     except (Exception,) as ex:
         print(f'ex gps_power_cycle_ddc_1 -> {ex}', flush=True)
