@@ -64,6 +64,8 @@ def gps_hat_get_firmware_version(port_ctrl):
     try:
         ser = serial.Serial(port_ctrl, baudrate=115200, timeout=0)
         _gps_hat_flush(ser)
+        time.sleep(.1)
+
         for i in range(3):
             # probably echo activated so will receive back this
             ser.write(b"AT+CVERSION\r")
@@ -79,6 +81,8 @@ def gps_hat_get_firmware_version(port_ctrl):
 
             if b'VERSION:' in ans_v:
                 break
+
+            time.sleep(1)
 
     except (Exception,) as ex:
         print(f'GPS: error gps_hat_get_firmware_version -> {ex}')
