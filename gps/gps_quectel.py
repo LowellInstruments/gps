@@ -50,7 +50,8 @@ def gps_hat_init(usb_port):
     finally:
         if ser:
             ser.close()
-        return rv
+
+    return rv
 
 
 
@@ -90,7 +91,8 @@ def gps_hat_get_firmware_version(port_ctrl):
     finally:
         if ser:
             ser.close()
-        return ans_v, ans_m
+
+    return ans_v, ans_m
 
 
 
@@ -102,6 +104,10 @@ def gps_hat_detect_list_of_usb_ports():
             continue
         ls.append(port)
         # ls: ['/dev/ttyUSB0' ... '/dev/ttyUSB3']
+    if len(ls) == 4 and ls[-2] == '/dev/ttyUSB3':
+        # change this, USB3 is devoted to ppp modem script
+        # and DDH always use the one before last one (-2)
+        ls = [ls[0], ls[1], ls[-1], ls[-2]]
     return ls
 
 
