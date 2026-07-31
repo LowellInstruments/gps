@@ -20,7 +20,7 @@ def pm(s):
 
 
 
-def gps_find_any_usb_port():
+def gps_find_any_usb_port(verbose=False):
 
     # prefer 1) adafruit or 2) puck or 3) hat
     p = gps_adafruit_detect_usb_port()
@@ -39,8 +39,9 @@ def gps_find_any_usb_port():
 
     port_nmea = ls_p[1]
     port_ctrl = ls_p[-2]
-    print(f'GPS: hat using USB ports {ls_p}')
-    print(f'\tnmea {port_nmea} ctrl {port_ctrl}')
+    if verbose:
+        print(f'GPS: hat using USB ports {ls_p}')
+        print(f'\tnmea {port_nmea} ctrl {port_ctrl}')
     return port_nmea, port_ctrl, 'hat'
 
 
