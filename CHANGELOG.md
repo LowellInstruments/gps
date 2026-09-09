@@ -13,4 +13,9 @@
 
     only accept sentences with one $ in _gps_parse_sentence_type()
 
+0.1.6   09/09/26
+
+    more verbose function HAT detect ports
+
+
 
