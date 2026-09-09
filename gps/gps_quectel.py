@@ -105,9 +105,15 @@ def gps_hat_detect_list_of_usb_ports():
         ls.append(port)
         # ls: ['/dev/ttyUSB0' ... '/dev/ttyUSB3']
     if len(ls) == 4 and ls[-2] == '/dev/ttyUSB3':
-        # change this, USB3 is devoted to ppp modem script
-        # and DDH always use the one before last one (-2)
+        # let's change order
+        # Linux ppp modem script uses ttyUSB3
+        # DDH always uses the one before last one, so [-2]
         ls = [ls[0], ls[1], ls[-1], ls[-2]]
+
+    if len(ls) != 4:
+        print('\nwarning: list of USB ports for HAT GPS receiver is not of length 4\n')
+        print('ls = ', ls)
+
     return ls
 
 
